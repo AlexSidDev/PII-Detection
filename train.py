@@ -1,4 +1,5 @@
 from data_utils import create_dataset
+from model_utils import create_model
 from transformers import AutoTokenizer
 
 
@@ -9,4 +10,7 @@ if __name__ == '__main__':
 
     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
 
-    dataset = create_dataset('dataset/train.json', tokenizer, labels_mapping)
+    dataset = create_dataset(['dataset/train.json', 'dataset/mixtral-8x7b-v1.json'],
+                             tokenizer=tokenizer, labels_mapping=labels_mapping)
+
+    model = create_model('dslim/distilbert-NER', labels_mapping)

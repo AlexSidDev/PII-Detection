@@ -35,14 +35,21 @@ class DatasetTokenizer:
         return pd.DataFrame(processed_rows, columns=['tokens', 'labels'])
 
 
-def create_dataset(path: str, tokenizer: PreTrainedTokenizer, labels_mapping: dict):
-    save_file_name = path.split('.')[0] + '.csv'
-    if not os.path.exists(save_file_name):
-        os.makedirs('./tmp', exist_ok=True)
-        raw_data = pd.read_json(path, orient='records')
-        re_tokenizer = DatasetTokenizer(raw_data, tokenizer, labels_mapping)
-        processed_data = re_tokenizer.re_tokenize()
+def create_dataset(paths: list, tokenizer: PreTrainedTokenizer, labels_mapping: dict, force_recreation=False):
+    save_file_name = './processed_data.csv'
+    if not os.path.exists(save_file_name) or force_recreation:
+        print("Start data processing...")
+        processed_data = None
+        for path in paths:
+            raw_data = pd.read_json(path, orient='records')
+            re_tokenizer = DatasetTokenizer(raw_data, tokenizer, labels_mapping)
+            if processed_data is not None:
+                processed_data = re_tokenizer.re_tokenize()
+            else:
+                processed_data = pd.concat([processed_data, re_tokenizer.re_tokenize()], ignore_index=True)
         processed_data.to_csv(save_file_name)
+    else:
+        print("Found cached data in", save_file_name)
     return pd.read_csv(save_file_name)
 
 
