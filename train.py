@@ -10,7 +10,9 @@ if __name__ == '__main__':
 
     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
 
-    dataset = create_dataset(['dataset/train.json', 'dataset/mixtral-8x7b-v1.json'],
+    model = create_model('dslim/distilbert-NER', labels_mapping)
+
+    dataset = create_dataset(['dataset/train.json', 'dataset/mixtral-8x7b-v1.json'], max_len=model.config.model,
                              tokenizer=tokenizer, labels_mapping=labels_mapping)
 
-    model = create_model('dslim/distilbert-NER', labels_mapping)
+

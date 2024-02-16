@@ -3,12 +3,15 @@ import pandas as pd
 import torch
 from transformers import PreTrainedTokenizer
 
+from ner_dataset import NERDataset
+
 
 class DatasetTokenizer:
-    def __init__(self, data: pd.DataFrame, tokenizer: PreTrainedTokenizer, labels_mapping: dict):
+    def __init__(self, data: pd.DataFrame, tokenizer: PreTrainedTokenizer, max_len: int, labels_mapping: dict):
         self.tokenizer = tokenizer
         self.labels_mapping = labels_mapping
         self.data = data
+        self.max_len = max_len
 
     def re_tokenize_row(self, tokens, labels):
         row_tokens = []
@@ -21,7 +24,16 @@ class DatasetTokenizer:
             ids_list = self.tokenizer.encode(token)
             row_tokens.extend(ids_list)
             row_labels.extend([label] * len(ids_list))
-        return [row_tokens, row_labels]
+        if len(row_tokens) > self.max_len:
+            slice_index = 0
+            rows = []
+            while slice_index < len(row_tokens):
+                sls = slice(slice_index, min(slice_index + self.max_len, len(row_tokens)))
+                rows.append([row_tokens[sls], row_labels[sls]])
+                slice_index += self.max_len
+            return rows
+        else:
+            return [[row_tokens, row_labels]]
 
     def re_tokenize(self):
         tokens = self.data['tokens']
@@ -31,11 +43,12 @@ class DatasetTokenizer:
             row_tokens = tokens[row]
             row_labels = labels[row]
             processed_row = self.re_tokenize_row(row_tokens, row_labels)
-            processed_rows.append(processed_row)
+            processed_rows.extend(processed_row)
         return pd.DataFrame(processed_rows, columns=['tokens', 'labels'])
 
 
-def create_dataset(paths: list, tokenizer: PreTrainedTokenizer, labels_mapping: dict, force_recreation=False):
+def create_dataset(paths: list, tokenizer: PreTrainedTokenizer, max_len: int,
+                   labels_mapping: dict, force_recreation=False):
     save_file_name = './processed_data.csv'
     if not os.path.exists(save_file_name) or force_recreation:
         print("Start data processing...")
@@ -50,7 +63,7 @@ def create_dataset(paths: list, tokenizer: PreTrainedTokenizer, labels_mapping: 
         processed_data.to_csv(save_file_name)
     else:
         print("Found cached data in", save_file_name)
-    return pd.read_csv(save_file_name)
+    return NERDataset(pd.read_csv(save_file_name))
 
 
 

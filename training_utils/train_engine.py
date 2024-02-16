@@ -20,6 +20,8 @@ class Trainer:
         self.metric = metric
 
     def train(self, epochs: int, val_every: int = 1, accumulation_step: int = 1):
+        assert epochs % val_every == 0, 'Epochs number should be divisible by \'val_every\' parameter'
+        assert accumulation_step > 0, '\'accumulation_step\' parameter should be greater than zero'
         accumulated_metrics = []
         for epoch in range(epochs):
             for it, inputs in enumerate(self.train_dataloader):
@@ -28,7 +30,7 @@ class Trainer:
 
                 outputs = self.model(**inputs)
                 logits = outputs.logits
-                loss = self.criterion(logits, labels)
+                loss = self.criterion(logits, labels) / accumulation_step
                 loss.backward()
 
                 if (it + 1) % accumulation_step == 0:
