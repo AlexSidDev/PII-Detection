@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from tqdm import tqdm
 
 
 def to_device(batch: dict, device: str):
@@ -7,7 +8,7 @@ def to_device(batch: dict, device: str):
 
 
 class Trainer:
-    def __init__(self, model, loss, optimizer, train_dataloader, val_dataloader, metric, device: str, scheduler=None):
+    def __init__(self, model, loss, optimizer, train_dataloader, val_dataloader, metrics, device: str, scheduler=None):
         self.device = device
         self.model = model.to(device)
         self.train_dataloader = train_dataloader
@@ -17,15 +18,16 @@ class Trainer:
         self.optimizer = optimizer
         self.scheduler = scheduler
 
-        self.metric = metric
+        self.metrics = metrics
 
     def train(self, epochs: int, val_every: int = 1, accumulation_step: int = 1):
         assert epochs % val_every == 0, 'Epochs number should be divisible by \'val_every\' parameter'
         assert accumulation_step > 0, '\'accumulation_step\' parameter should be greater than zero'
         accumulated_metrics = []
+        print('Start training')
         for epoch in range(epochs):
-            for it, inputs in enumerate(self.train_dataloader):
-                inputs = to_device(inputs, device)
+            for it, inputs in tqdm(enumerate(self.train_dataloader), total=len(self.train_dataloader)):
+                inputs = to_device(inputs, self.device)
                 labels = inputs.pop('labels')
 
                 outputs = self.model(**inputs)
@@ -45,7 +47,7 @@ class Trainer:
                 accumulated_metric = 0
                 for it, inputs in enumerate(self.val_dataloader):
                     with torch.no_grad():
-                        inputs = to_device(inputs, device)
+                        inputs = to_device(inputs, self.device)
                         labels = inputs.pop('labels')
 
                         outputs = self.model(**inputs)

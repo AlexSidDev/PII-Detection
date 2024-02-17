@@ -1,9 +1,10 @@
 import os
 import pandas as pd
+from sklearn.model_selection import train_test_split
 import torch
 from transformers import PreTrainedTokenizer
 
-from ner_dataset import NERDataset
+from .ner_dataset import NERDataset
 
 
 class DatasetTokenizer:
@@ -44,18 +45,18 @@ class DatasetTokenizer:
             row_labels = labels[row]
             processed_row = self.re_tokenize_row(row_tokens, row_labels)
             processed_rows.extend(processed_row)
-        return pd.DataFrame(processed_rows, columns=['tokens', 'labels'])
+        return pd.DataFrame(processed_rows, columns=['tokens', 'labels'], dtype='object')
 
 
 def create_dataset(paths: list, tokenizer: PreTrainedTokenizer, max_len: int,
-                   labels_mapping: dict, force_recreation=False):
+                   labels_mapping: dict, force_recreate=False):
     save_file_name = './processed_data.csv'
-    if not os.path.exists(save_file_name) or force_recreation:
+    if not os.path.exists(save_file_name) or force_recreate:
         print("Start data processing...")
         processed_data = None
         for path in paths:
             raw_data = pd.read_json(path, orient='records')
-            re_tokenizer = DatasetTokenizer(raw_data, tokenizer, labels_mapping)
+            re_tokenizer = DatasetTokenizer(raw_data, tokenizer, max_len, labels_mapping)
             if processed_data is not None:
                 processed_data = re_tokenizer.re_tokenize()
             else:
@@ -63,7 +64,10 @@ def create_dataset(paths: list, tokenizer: PreTrainedTokenizer, max_len: int,
         processed_data.to_csv(save_file_name)
     else:
         print("Found cached data in", save_file_name)
-    return NERDataset(pd.read_csv(save_file_name))
+    all_data = pd.read_csv(save_file_name)
+    # all_data = all_data.map(pd.eval)
+    train_data, val_data = train_test_split(all_data, test_size=0.25, random_state=42)
+    return NERDataset(train_data.reset_index(drop=True)), NERDataset(val_data.reset_index(drop=True))
 
 
 

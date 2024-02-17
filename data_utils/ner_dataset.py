@@ -11,8 +11,8 @@ class NERDataset:
         return len(self.data.index)
 
     def __getitem__(self, index):
-        tokens = torch.tensor(self.data['tokens'][index], dtype=torch.long)
-        labels = torch.tensor(self.data['labels'][index], dtype=torch.long)
+        tokens = torch.tensor(eval(self.data['tokens'][index]), dtype=torch.long)
+        labels = torch.tensor(eval(self.data['labels'][index]), dtype=torch.long)
         return tokens, labels
 
 
@@ -29,9 +29,9 @@ class DataCollator:
         batch['attention_mask'] = torch.stack(padded_masks)
 
         padded_ids = [self.pad_fn(sample[0], self.pad_id) for sample in data]
-        batch['input_ids'] = torch.stack(padded_ids, dim=0)
+        batch['input_ids'] = torch.stack(padded_ids)
 
         padded_labels = [self.pad_fn(sample[1], self.label_pad_id) for sample in data]
-        batch['labels'] = padded_labels
+        batch['labels'] = torch.stack(padded_labels)
         return batch
 

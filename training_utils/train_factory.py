@@ -17,5 +17,5 @@ class DSCLoss(nn.Module):
         nom = 2 * decayed_probs * one_hot_labels + self.gamma
         denom = decayed_probs + one_hot_labels + self.gamma
         ignorance_mask = (labels != self.ignore_index)
-        loss = (nom / denom).sum(-1) * ignorance_mask
+        loss = (1 - nom / denom).sum(-1) * ignorance_mask
         return loss.sum() / ignorance_mask.sum()
