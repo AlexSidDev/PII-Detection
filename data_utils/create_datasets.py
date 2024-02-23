@@ -15,26 +15,22 @@ class DatasetTokenizer:
         self.max_len = max_len
 
     def re_tokenize_row(self, tokens, labels):
-        row_tokens = []
+        tokenized_inputs = self.tokenizer(tokens, truncation=True,
+                                          is_split_into_words=True, 
+                                          add_special_tokens=False,
+                                          max_length=self.max_len)
+
+        row_tokens, word_inds = tokenized_inputs['input_ids'], tokenized_inputs.word_ids()
+
         row_labels = []
-        for tok_ind, token in enumerate(tokens):
-            label = labels[tok_ind]
+        for word_ind in word_inds:
+            label = labels[word_ind]
             if label.startswith('B-') or label.startswith('I-'):
                 label = label.split('-')[-1]
             label = self.labels_mapping[label]
-            ids_list = self.tokenizer.encode(token)
-            row_tokens.extend(ids_list)
-            row_labels.extend([label] * len(ids_list))
-        if len(row_tokens) > self.max_len:
-            slice_index = 0
-            rows = []
-            while slice_index < len(row_tokens):
-                sls = slice(slice_index, min(slice_index + self.max_len, len(row_tokens)))
-                rows.append([row_tokens[sls], row_labels[sls]])
-                slice_index += self.max_len
-            return rows
-        else:
-            return [[row_tokens, row_labels]]
+            row_labels.append(label)
+
+        return [row_tokens, row_labels, word_inds]
 
     def re_tokenize(self):
         tokens = self.data['tokens']
@@ -44,8 +40,8 @@ class DatasetTokenizer:
             row_tokens = tokens[row]
             row_labels = labels[row]
             processed_row = self.re_tokenize_row(row_tokens, row_labels)
-            processed_rows.extend(processed_row)
-        return pd.DataFrame(processed_rows, columns=['tokens', 'labels'], dtype='object')
+            processed_rows.append(processed_row)
+        return pd.DataFrame(processed_rows, columns=['tokens', 'labels', 'word_inds'], dtype='object')
 
 
 def create_dataset(paths: list, tokenizer: PreTrainedTokenizer, max_len: int,
@@ -56,8 +52,9 @@ def create_dataset(paths: list, tokenizer: PreTrainedTokenizer, max_len: int,
         processed_data = None
         for path in paths:
             raw_data = pd.read_json(path, orient='records')
+            raw_data = raw_data[raw_data['labels'].map(lambda x: any([label != 'O' for label in x]))].reset_index(drop=True)
             re_tokenizer = DatasetTokenizer(raw_data, tokenizer, max_len, labels_mapping)
-            if processed_data is not None:
+            if processed_data is None:
                 processed_data = re_tokenizer.re_tokenize()
             else:
                 processed_data = pd.concat([processed_data, re_tokenizer.re_tokenize()], ignore_index=True)
@@ -65,7 +62,6 @@ def create_dataset(paths: list, tokenizer: PreTrainedTokenizer, max_len: int,
     else:
         print("Found cached data in", save_file_name)
     all_data = pd.read_csv(save_file_name)
-    # all_data = all_data.map(pd.eval)
     train_data, val_data = train_test_split(all_data, test_size=0.25, random_state=42)
     return NERDataset(train_data.reset_index(drop=True)), NERDataset(val_data.reset_index(drop=True))
 
