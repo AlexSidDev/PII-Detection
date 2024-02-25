@@ -23,7 +23,7 @@ def print_metrics(metrics: dict, epoch: int):
 
 
 class Trainer:
-    def __init__(self, model, loss, optimizer, train_dataloader, val_dataloader, metric, device: str, scheduler=None):
+    def __init__(self, model, loss, optimizer, train_dataloader, val_dataloader, device: str, scheduler=None):
         self.device = device
         self.model = model.to(device)
         self.train_dataloader = train_dataloader
@@ -33,13 +33,13 @@ class Trainer:
         self.optimizer = optimizer
         self.scheduler = scheduler
 
-        self.metric = metric
 
     def train(self, epochs: int, val_every: int = 1, accumulation_step: int = 1):
         assert epochs % val_every == 0, 'Epochs number should be divisible by \'val_every\' parameter'
         assert accumulation_step > 0, '\'accumulation_step\' parameter should be greater than zero'
         accumulated_metrics = []
         print('Start training')
+        best_metric = 0
         for epoch in range(epochs):
             for it, inputs in tqdm(enumerate(self.train_dataloader), total=len(self.train_dataloader), desc='Training'):
                 inputs = to_device(inputs, self.device)
@@ -66,11 +66,14 @@ class Trainer:
                         labels = inputs.pop('labels')
 
                         logits = self.model(**inputs).logits
-                        preds = torch.argmax(logits, dim=-1).ravel()
-                        metrics = compute_metrics(labels.ravel().cpu().numpy(), preds.cpu().numpy())
+                        preds = torch.argmax(logits, dim=-1).flatten()
+                        metrics = compute_metrics(labels.flatten().cpu().numpy(), preds.cpu().numpy())
 
                     accumulated_metric = accumulate_metrics(accumulated_metric, metrics, len(self.val_dataloader))
                 accumulated_metrics.append(accumulated_metric)
                 print_metrics(accumulated_metric, epoch=epoch)
+                if best_metric < accumulated_metric['fbeta_score']:
+                    best_metric = accumulated_metric['fbeta_score']
+                    torch.save(self.model, './best_model.pt')
                 self.model.train()
         return accumulated_metrics
