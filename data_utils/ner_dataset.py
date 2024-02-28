@@ -4,8 +4,9 @@ import torch.nn.functional as F
 
 
 class NERDataset:
-    def __init__(self, data: pd.DataFrame):
+    def __init__(self, data: pd.DataFrame, return_word_ids: bool=False):
         self.data = data
+        self.return_word_ids = return_word_ids
 
     def __len__(self):
         return len(self.data.index)
@@ -13,6 +14,9 @@ class NERDataset:
     def __getitem__(self, index):
         tokens = torch.tensor(eval(self.data['tokens'][index]), dtype=torch.long)
         labels = torch.tensor(eval(self.data['labels'][index]), dtype=torch.long)
+        if self.return_word_ids:
+            word_ids = torch.tensor(eval(self.data['word_ids'][index]), dtype=torch.long)
+            return tokens, labels, word_ids
         return tokens, labels
 
 

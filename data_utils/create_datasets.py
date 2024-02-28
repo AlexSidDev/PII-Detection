@@ -45,7 +45,7 @@ class DatasetTokenizer:
 
 
 def create_dataset(paths: list, tokenizer: PreTrainedTokenizer, max_len: int,
-                   labels_mapping: dict, force_recreate=False):
+                   labels_mapping: dict, force_recreate=False, return_word_ids=False):
     save_file_name = './processed_data.csv'
     if not os.path.exists(save_file_name) or force_recreate:
         print("Start data processing...")
@@ -63,7 +63,7 @@ def create_dataset(paths: list, tokenizer: PreTrainedTokenizer, max_len: int,
         print("Found cached data in", save_file_name)
     all_data = pd.read_csv(save_file_name)
     train_data, val_data = train_test_split(all_data, test_size=0.25, random_state=42)
-    return NERDataset(train_data.reset_index(drop=True)), NERDataset(val_data.reset_index(drop=True))
+    return NERDataset(train_data.reset_index(drop=True)), NERDataset(val_data.reset_index(drop=True), return_word_ids=return_word_ids)
 
 
 

@@ -16,10 +16,16 @@ torch.manual_seed(0)
 def parse_args():
     parser = argparse.ArgumentParser()
     # model params
-    parser.add_argument('--model_path', type=str, default='dslim/distilbert-NER')
-    parser.add_argument('--max_len', type=int, default=1024)
+    parser.add_argument('--model_path', type=str, default='dslim/distilbert-NER',
+    help='Path to pre-trained model. Can be link to model from Huggingface hub or to local folder in Transformers format.')
+    parser.add_argument('--max_len', type=int, default=1024,
+    help='Maximum lenght of sequence that can be passed throught model.')
+    # data path
+    parser.add_argument('--dataset_paths', nargs='+', type=str,
+    help='Path or paths to training datasets in json format.')
     # batch size
-    parser.add_argument('--batch_size', type=int, default=1)
+    parser.add_argument('--batch_size', type=int, default=1,
+    help='Train batch size. It is recommended to use 1 because of huge class disbalance')
     parser.add_argument('--val_batch_size', type=int, default=64)
     # training params
     parser.add_argument('--epochs', type=int, default=3)
@@ -45,7 +51,7 @@ if __name__ == '__main__':
 
     model = create_model(args.model_path, labels_mapping)
 
-    train_dataset, val_dataset = create_dataset(['dataset/train.json', 'dataset/mixtral-8x7b-v1.json'],
+    train_dataset, val_dataset = create_dataset(args.dataset_paths,
                                                 max_len=model.config.max_position_embeddings,
                                                 tokenizer=tokenizer, labels_mapping=labels_mapping,
                                                 val_mode='train')
